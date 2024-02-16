@@ -13,7 +13,7 @@ from jaxtyping import Array, PRNGKeyArray
 import matplotlib.pyplot as plt
 from gwinferno.preprocess.data_collection import p_m1src_q_z_lal_pe_prior
 
-# TODO: SOURCE FRAME CHIRP MASS
+
 def Args():
     parser = ArgumentParser()
     parser.add_argument("--data-dir", type=str, default='/projects/farr_lab/shared/GWTC3/all_events')
@@ -24,7 +24,9 @@ def Args():
 
 def make_training_loop(optim: optax.GradientTransformation) -> Callable:
     """
-    Create a function that trains an NF model.
+    Create a function that trains an ensembled NF model.
+
+    Modified from [flowMC](https://github.com/kazewong/flowMC) to use with ensembled flows.
 
     Args:
         model (eqx.Model): NF model to train.
@@ -85,7 +87,6 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
         state: optax.OptState,
         num_epochs: int,
         batch_size: int,
-        # verbose: bool = True,
     ) -> Tuple[PRNGKeyArray, eqx.Module, Array]:
         """Train a normalizing flow model.
 
@@ -104,28 +105,13 @@ def make_training_loop(optim: optax.GradientTransformation) -> Callable:
             loss_values (Array): Loss values.
         """
         loss_values = jnp.zeros(num_epochs)
-        # if verbose:
-        #     pbar = trange(num_epochs, desc="Training NF", miniters=int(num_epochs / 10))
-        # else:
         pbar = range(num_epochs)
-        # best_model = model
-        # best_loss = 1e9
         for epoch in pbar:
             # Use a separate PRNG key to permute image data during shuffling
             rng, input_rng = jax.random.split(rng)
             # Run an optimization step over a training batch
             value, model, state = train_epoch(input_rng, model, state, data, weights, batch_size)
             loss_values = loss_values.at[epoch].set(value)
-            # if loss_values[epoch] < best_loss:
-            #     best_model = model
-            #     best_loss = loss_values[epoch]
-            # if verbose:
-            #     if num_epochs > 10:
-            #         if epoch % int(num_epochs / 10) == 0:
-            #             pbar.set_description(f"Training NF, current loss: {value:.3f}")
-            #     else:
-            #         if epoch == num_epochs:
-            #             pbar.set_description(f"Training NF, current loss: {value:.3f}")
 
         return rng, model, state, loss_values
 
